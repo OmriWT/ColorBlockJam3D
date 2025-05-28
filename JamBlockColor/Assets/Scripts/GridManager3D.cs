@@ -13,12 +13,12 @@ public class GridManager3D : MonoBehaviour
     void GenerateGrid()
     {
         for (int x = 0; x < columns; x++)
-            for (int z = 0; z < rows; z++)
+            for (int y = 0; y < rows; y++)
             {
                 Vector3 position = new Vector3(
                     x * (1f + spacing),
                     0f,
-                    z * (1f + spacing)
+                    y * (1f + spacing)
                 );
 
                 Instantiate(tilePrefab, position, Quaternion.identity, transform);

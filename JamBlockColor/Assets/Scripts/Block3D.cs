@@ -15,15 +15,18 @@ public class Block3D : MonoBehaviour
 
     public Color blockColor;
 
+    public LayerMask blockLayerMask;
+    BoxCollider boxCollider;
+    Vector3 halfExtents;
 
 
     void Start()
     {
-        
+        BoxCollider boxCollider = GetComponent<BoxCollider>();
         // Başlangıçta grid'e yerleştir
         MoveTo(gridPosition);
         BoardManager.Instance.RegisterBlock(this);
-
+        halfExtents = boxCollider.bounds.extents * 1.2f;
         blockRenderer = GetComponent<Renderer>();
         blockRenderer.material = normalMaterial;
 
@@ -50,29 +53,39 @@ public class Block3D : MonoBehaviour
 
     void OnMouseDrag()
     {
-    
-        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        if (dragPlane.Raycast(ray, out float enter))
+        // 1) Ray / clamp ile hedef pozisyonu hesapla
+        var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if (!dragPlane.Raycast(ray, out float enter)) return;
+        Vector3 hit = ray.GetPoint(enter) + offset;
+        float x = Mathf.Clamp(hit.x, 0, BoardManager.Instance.cols - 0.5f);
+        float z = Mathf.Clamp(hit.z, 0, BoardManager.Instance.rows - 0.5f);
+        Vector3 desiredPos = new Vector3(x, blockHeight, z);
+
+        // 2) OverlapBox ile çarpışma testini yap, ama yalnızca “Blocks” layer’ındaki objeleri al
+        Collider[] hits = Physics.OverlapBox(
+            desiredPos,
+            halfExtents,
+            Quaternion.identity,
+            blockLayerMask,
+            QueryTriggerInteraction.Ignore
+        );
+
+        // 3) Hit’ler arasında kendimiz dışındaki bir blok varsa ENGEL VAR demektir
+        bool blocked = false;
+        foreach (var col in hits)
         {
-            Vector3 hitPoint = ray.GetPoint(enter) + offset;
-            // Grid sınırları içinde tut
-            float x = Mathf.Clamp(hitPoint.x, 0, BoardManager.Instance.cols-0.5f);
-            float z = Mathf.Clamp(hitPoint.z, 0, BoardManager.Instance.rows-0.5f);
-            Vector3 desiredPosition = new Vector3(x, blockHeight, z);
-
-            Vector2Int targetCell = new Vector2Int(
-            Mathf.RoundToInt(x),
-            Mathf.RoundToInt(z)
-            );
-
-            bool isCanMove = BoardManager.Instance.isCellAvailable(targetCell);
-            Debug.Log(isCanMove);
-            if (isCanMove)
-                transform.position = desiredPosition;
+            if (col.gameObject == gameObject)
+                continue;    // bu bizim kendi collider’ımız, yoksay
+            blocked = true;
+            break;
         }
-                 
+
+        // 4) Eğer engel yoksa pozisyonu uygula
+        if (!blocked)
+            transform.position = desiredPos;
     }
-    
+
+
     void OnMouseUp()
     {
         // Bırakınca en yakın hücreye yapış ve kaydet

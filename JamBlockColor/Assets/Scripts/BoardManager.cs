@@ -22,6 +22,7 @@ public class BoardManager : MonoBehaviour
 
     public Vector3 GetWorldPosition(Vector2Int gridPos)
     {
+
         return new Vector3(
             gridPos.x * (1f + spacing),
             0.5f, // blockHeight
